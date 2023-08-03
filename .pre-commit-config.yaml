@@ -1,0 +1,25 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+      - id: check-yaml
+        exclude: (template|ci).*\.(json|yml|yaml)$
+  - repo: local
+    hooks:
+    - id: black
+      name: black
+      language: system
+      types: [python]
+      entry: python -m black
+      exclude: (notebooks/).*\.(json|yml|yaml).*\.(.gitignore)
+    - id: isort
+      name: isort
+      language: system
+      types: [python]
+      entry: python -m isort
+      exclude: (notebooks/).*\.(json|yml|yaml).*\.(.gitignore)
