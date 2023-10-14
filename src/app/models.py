@@ -19,6 +19,18 @@ class ModelMultiperiod(ABC):
         self.model.optimize()
         return self.model.Status
 
+    @abstractmethod
+    def build(
+        self,
+        satellites: List[Satellite],
+        pixels: List[Pixel],
+        vehicles_required: Dict[str, Dict],
+        costs: Dict[str, Dict],
+        **kwargs,
+    ) -> Dict[str, float]:
+        """Build the model."""
+        pass
+
     def show_model(self):
         """Show the model."""
         self.model.display()
@@ -62,6 +74,7 @@ class Deterministic(ModelMultiperiod):
         pixels: List[Pixel],
         vehicles_required: Dict[str, Dict],
         costs: Dict[str, Dict],
+        **kwargs,
     ) -> Dict[str, float]:
         """Build the model."""
         self.model.reset()
@@ -183,3 +196,9 @@ class Deterministic(ModelMultiperiod):
     ) -> None:
         """Add constraints to model."""
         pass
+
+
+class SecondStage(ModelMultiperiod):
+    """Model Second Stage."""
+
+    pass
