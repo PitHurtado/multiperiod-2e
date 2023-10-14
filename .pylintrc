@@ -1,0 +1,2 @@
+[TYPECHECK]
+max-locals=20  # Ajusta este valor según tu necesidad
