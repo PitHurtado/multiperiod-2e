@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "clustering-agregation model"
+name = "Model-multiperiod"
 version = "0.0.0"
-description = "this project aims to clustering and aggregation process about pixels"
+description = "draft"
 authors = ["phurtac <pitehrh@gmail.com>"]
 readme = "README.md"
 
