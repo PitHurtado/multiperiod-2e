@@ -32,7 +32,7 @@ class Pixel(Locatable):
         self.demand_by_period = []
         self.avg_drop = avg_drop
         self.avg_stop = avg_stop
-        self.speed_intra = speed_intra_stop
+        self.speed_intra_stop = speed_intra_stop
         self.k = k
 
 
@@ -49,8 +49,8 @@ class Satellite(Locatable):
         duration_in_traffic_from_dic: Optional[float],
         cost_fixed: Dict[str, float],
         cost_operation: List[float],
-        cost_sourcing: float,
         capacity: Dict[str, float],
+        cost_sourcing: float,
     ):
         Locatable.__init__(self, lon, lat)
         self.id = id
