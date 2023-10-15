@@ -20,7 +20,6 @@ class Pixel(Locatable):
         lat: float,
         area_km: float,
         customers_by_period: List[float],
-        demand_by_period: List[float],
         avg_drop: List[float],
         avg_stop: List[float],
         speed_intra_stop: Dict[str, float],
@@ -30,7 +29,7 @@ class Pixel(Locatable):
         self.id = id
         self.area_km = area_km
         self.customers_by_period = customers_by_period
-        self.demand_by_period = demand_by_period
+        self.demand_by_period = []
         self.avg_drop = avg_drop
         self.avg_stop = avg_stop
         self.speed_intra = speed_intra_stop
