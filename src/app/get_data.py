@@ -56,8 +56,8 @@ class Data:
                 duration_in_traffic_from_dic=row["duration_in_traffic"],
                 cost_fixed=json.loads(row["cost_fixed"]),
                 cost_operation=cost_operation,
-                cost_sourcing=cost_sourcing,
                 capacity=capacity,
+                cost_sourcing=cost_sourcing,
             )
             satellites[id] = new_satellite
         if show_data:
