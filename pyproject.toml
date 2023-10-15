@@ -37,6 +37,8 @@ nox-poetry = "^1.0.3"
 mypy = "^1.4.1"
 pdbpp = "^0.10.3"
 
+[tool.setuptools_scm]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
