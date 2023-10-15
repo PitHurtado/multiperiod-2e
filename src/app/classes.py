@@ -50,7 +50,7 @@ class Satellite(Locatable):
         cost_fixed: Dict[str, float],
         cost_operation: List[float],
         capacity: Dict[str, float],
-        cost_sourcing: float,
+        cost_sourcing: float = 0.335 / 2,
     ):
         Locatable.__init__(self, lon, lat)
         self.id = id
@@ -59,7 +59,9 @@ class Satellite(Locatable):
         self.duration_in_traffic_from_dic = duration_in_traffic_from_dic
         self.cost_fixed = cost_fixed
         self.cost_operation = cost_operation
-        self.cost_sourcing = 0.335 / 2  # TODO: Change this to a variable in the future
+        self.cost_sourcing = (
+            cost_sourcing  # TODO: Change this to a variable in the future
+        )
         self.capacity = capacity
 
 
