@@ -511,7 +511,6 @@ class SecondStage(ModelMultiperiod):
         self, satellites: List[Satellite], pixels: List[Pixel], costs: Dict[str, Dict]
     ) -> None:
         """Add objective to model."""
-        # 1. add cost operating satellites
         logger.info("[Objective] Add objective")
         self.cost_allocation_satellites = sum(
             [
@@ -521,6 +520,8 @@ class SecondStage(ModelMultiperiod):
                 if self.Y[(s.id, q_id)] > 0
             ]
         )  # TODO verify if this is correct
+
+        # 1. add cost operating satellites
         self.cost_operating_satellites = quicksum(
             [
                 (s.cost_operation[q_id][t]) * self.X[(s.id, q_id, t)]
@@ -563,11 +564,11 @@ class SecondStage(ModelMultiperiod):
         self, satellites: List[Satellite], pixels: List[Pixel], vehicles_required: Dict
     ) -> None:
         """Add constraints to model."""
-        self.__add_constr_assign_pixel_sallite(satellites, pixels)
+        self.__add_constr_assign_pixel_satellite(satellites, pixels)
         self.__add_constr_demand_satified(satellites, pixels)
         self.__add_constr_capacity_satellite(satellites, pixels, vehicles_required)
 
-    def __add_constr_assign_pixel_sallite(
+    def __add_constr_assign_pixel_satellite(
         self, satellites: List[Satellite], pixels: List[Pixel]
     ) -> None:
         """Add constraint assign pixel to satellite."""
@@ -635,10 +636,6 @@ class SecondStage(ModelMultiperiod):
                                     "fleet_size"
                                 ]
                                 for k in pixels
-                                if sum(
-                                    [self.Y[(s.id, q_id)] for q_id in s.capacity.keys()]
-                                )
-                                > 0
                             ]
                         )
                         <= sum(
@@ -751,3 +748,164 @@ class SecondStage(ModelMultiperiod):
             logger.info("[Run] Results obtained")
         else:
             logger.info("[Run] Results not obtained")
+
+
+class SecondStageFlexOperation(SecondStage):
+    """Model Second Stage with Flex Operation Capacity."""
+
+    def __add_variables(self, satellites: List[Satellite], pixels: List[Pixel]) -> None:
+        """Add variables to model."""
+        # 1. add variable X: binary variable to decide if a satellite is operating in a period
+        logger.info("[Variable] Add variable X")
+        self.X = dict(
+            [
+                (
+                    (s.id, q_id, t),
+                    self.model.addVar(vtype=GRB.BINARY, name=f"X_s{s.id}_t{t}"),
+                )
+                for s in satellites
+                for q_id in s.capacity.keys()
+                for t in range(self.PERIODS)
+                if sum(
+                    [
+                        self.Y[(s.id, q_i)]
+                        for q_i, q in s.capacity.items()
+                        if q >= s.capacity[q_i]
+                    ]
+                )
+                > 0  # TODO verify if this is correct
+            ]
+        )
+        logger.info(f"Number of variables X: {len(self.X)}")
+        # 2. add variable Y: binary variable to decide if a satellite is used to serve a pixel
+        logger.info("[Variable] Add variable Z")
+        self.Z = dict(
+            [
+                (
+                    (s.id, k.id, t),
+                    self.model.addVar(vtype=GRB.BINARY, name=f"Z_s{s.id}_k{k.id}_t{t}"),
+                )
+                for s in satellites
+                for k in pixels
+                for t in range(self.PERIODS)
+                if sum([self.Y[(s.id, q_id)] for q_id in s.capacity.keys()]) > 0
+            ]
+        )
+        logger.info(f"Number of variables Z: {len(self.Z)}")
+        # 3. add variable W: binary variable to decide if a pixel is served from dc
+        logger.info("[Variable] Add variable W")
+        self.W = dict(
+            [
+                ((k.id, t), self.model.addVar(vtype=GRB.BINARY, name=f"W_k{k.id}_t{t}"))
+                for k in pixels
+                for t in range(self.PERIODS)
+            ]
+        )
+        logger.info(f"Number of variables W: {len(self.W)}")
+
+    def __add_objective(
+        self, satellites: List[Satellite], pixels: List[Pixel], costs: Dict[str, Dict]
+    ) -> None:
+        """Add objective to model."""
+        logger.info("[Objective] Add objective")
+        self.cost_allocation_satellites = sum(
+            [
+                (s.cost_fixed[q_id]) * self.Y[(s.id, q_id)]
+                for s in satellites
+                for q_id in s.capacity.keys()
+                if self.Y[(s.id, q_id)] > 0
+            ]
+        )
+
+        # 1. add cost operating satellites
+        self.cost_operating_satellites = quicksum(
+            [
+                (s.cost_operation[q_id][t]) * self.X[(s.id, q_id, t)]
+                for s in satellites
+                for q_id in s.capacity.keys()
+                for t in range(self.PERIODS)
+                if sum(
+                    [
+                        self.Y[(s.id, q_i)]
+                        for q_i, q in s.capacity.items()
+                        if q >= s.capacity[q_i]
+                    ]
+                )
+                > 0  # TODO verify if this is correct
+            ]
+        )
+
+        # 2. add cost served from satellite
+        self.cost_served_from_satellite = quicksum(
+            [
+                costs["satellite"][(s.id, k.id, t)]["total"] * self.Z[(s.id, k.id, t)]
+                for s in satellites
+                for k in pixels
+                for t in range(self.PERIODS)
+                if sum([self.Y[(s.id, q_id)] for q_id in s.capacity.keys()]) > 0
+            ]
+        )
+
+        # 3. add cost served from dc
+        self.cost_served_from_dc = quicksum(
+            [
+                costs["dc"][(k.id, t)]["total"] * self.W[(k.id, t)]
+                for k in pixels
+                for t in range(self.PERIODS)
+            ]
+        )
+
+        self.cost_total = (
+            self.cost_served_from_dc
+            + self.cost_served_from_satellite
+            + self.cost_operating_satellites
+        )
+        logger.info(f"Objective: \n{self.cost_total}")
+        self.model.setObjective(self.cost_total, GRB.MINIMIZE)
+
+    def __add_constraints(
+        self, satellites: List[Satellite], pixels: List[Pixel], vehicles_required: Dict
+    ) -> None:
+        """Add constraints to model."""
+        super.__add_constr_demand_satified(satellites, pixels)
+        self.__add_constr_capacity_satellite(satellites, pixels, vehicles_required)
+
+    def __add_constr_capacity_satellite(
+        self,
+        satellites: List[Satellite],
+        pixels: List[Pixel],
+        vehicles_required: Dict[str, Dict],
+    ) -> None:
+        """Add constraint capacity satellite."""
+        logger.info("[Constraint] Add constraint capacity satellite")
+        for t in range(self.PERIODS):
+            for s in satellites:
+                if sum([self.Y[(s.id, q_id)] for q_id in s.capacity.keys()]) > 0:
+                    nameConstraint = f"R_capacity_s{s.id}_t{t}"
+                    logger.info(f"Add constraint: {nameConstraint}")
+                    self.model.addConstr(
+                        quicksum(
+                            [
+                                self.Z[(s.id, k.id, t)]
+                                * vehicles_required["small"][(s.id, k.id, t)][
+                                    "fleet_size"
+                                ]
+                                for k in pixels
+                            ]
+                        )
+                        <= sum(
+                            [
+                                self.X[(s.id, q_id)] * s.capacity[q_id]
+                                for q_id in s.capacity.keys()
+                                if sum(
+                                    [
+                                        self.Y[(s.id, q_i)]
+                                        for q_i, q in s.capacity.items()
+                                        if q >= s.capacity[q_i]
+                                    ]
+                                )
+                                > 0  # TODO verify if this is correct
+                            ]
+                        ),
+                        name=nameConstraint,
+                    )
